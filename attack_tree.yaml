@@ -1,0 +1,152 @@
+# Paste me into https://swagitda.com/deciduous/
+
+title: AWS KMS Threat Model
+
+facts:
+- physical: Physical access to AWS infrastructure
+  from:
+  - reality:
+- network: Network access to AWS or on path to KMS journey
+  from: 
+  - reality
+- shared_hsm: AWS multi-tenant HSM
+  from: 
+  - physical:
+- byok: Bring your own key
+  from:
+  - cloudhsm:
+  - hsm_vuln:
+  - key_gen:
+- service_via_internet: Connecting to an AWS service via public endpoint
+  from:
+  - network
+- iam_access: IAM access 
+  from:
+  - reality:
+- iam_access_data: IAM access to the data e.g. s3:GetObject
+  from:
+  - iam_access:
+  - key_compromise:
+- aws_key: An AWS customer managed key (cannot control key policy)
+  from:
+  - iam_access_data:
+
+
+mitigations:
+- any_encryption: Any encryption method
+  from: 
+  - aws_insecure_storage:
+  - attack_on_aws_dc:
+- kms_policy: Modify KMS Policy
+  from:
+  - kms_policy_misconfiguration:
+- vpc_endpoint: VPC Endpoint 
+  from:
+  - service_via_internet:
+- hyok: Host your own key (HYOK)
+  from:
+  - compelled_access:
+  - hsm_vuln:
+- cloudhsm: Dedicated HSM (CloudHSM)
+  from:
+  - hsm_vuln:
+- cloudhsm_multiregion_backup: CloudHSM cross-region backups
+  from:
+  - region_loss:
+- multi_az: Multi AZ
+  from:
+  - az_loss:
+- cross_region_kms: Cross Region keys
+  from:
+  - region_loss:
+- vpc_endpoint_with_policy: VPC Endpoint with least privilege policy 
+  from:
+  - vpc_endpoint_no_policy:
+- reimport_byok: Re-import key material
+  from:
+  - key_loss:
+- key_rotation: KMS Key Rotation
+  from:
+  - key_compromise:
+
+attacks:
+- no_data_encryption: Data is not encrypted
+  from:
+  - attack_on_aws_dc:
+  - aws_insecure_storage:
+- attack_on_aws_dc: Physical access to AWS datacentre
+  from: 
+    - physical:
+- aws_insecure_storage: AWS not sanitising recycled storage
+  from: 
+  - physical:
+- compelled_access: A law or other entity is compelling AWS or the Customer to hand over data and keys (e.g. Patriot Act)
+  from: 
+  - iam_access:
+  - cross_region_kms:
+  - physical:
+  - cloudhsm_multiregion_backup
+- hsm_vuln: Multi-tenant HSM vulnerability or AWS owned key is compromised
+  from: 
+  - shared_hsm:
+- vpc_endpoint_no_policy: VPC endpoint has no least privilege policy
+  from:
+  - byoc:
+- byoc: Bring your own AWS credentials
+  from:
+  - vpc_endpoint:
+- mitm: Monster in the Middle attack
+  from:
+  - service_via_internet:
+- az_loss: AWS availability zone failure
+  from:
+  - cloudhsm:
+- region_loss: AWS region failure
+  from:
+  - cloudhsm:
+  - byok:
+  - shared_hsm:
+  - hyok:
+  - multi_az:
+- network_loss: Network connection disruption
+  from:
+  - hyok
+  - service_via_internet
+- key_loss: Key material lost
+  from:
+  - region_loss:
+- key_gen: Key material generation is not secure
+  from: 
+  - hsm_vuln:
+- kms_policy_misconfiguration: KMS policy is overly permissive
+  from:
+  - iam_access_data
+  - byoc
+- key_compromise: Key compromise - e.g. via cached plaintext data key
+  from:
+  - byok:
+  - shared_hsm:
+  - iam_access_data:
+  - any_encryption:
+  - hyok:
+  - cloudhsm:
+
+
+goals:
+- data_compromise: Data Compromise
+  from:
+  - aws_key:  
+  - no_data_encryption:
+  - compelled_access:
+  - vpc_endpoint_no_policy:
+  - kms_policy_misconfiguration:
+  - mitm:
+  - key_rotation:
+  - key_compromise:
+ 
+- data_loss: Data Loss
+  from:
+  - region_loss:
+  - az_loss:
+  - key_loss:
+  - network_loss:
